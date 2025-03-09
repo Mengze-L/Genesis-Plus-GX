@@ -79,23 +79,79 @@
 #define GET_B(pixel) (((pixel) & 0x0000ff) >> 0)
 #endif
 
+#define MY_COLOR_1_1 MAKE_PIXEL(0xa, 0xc, 0xe)
+#define MY_COLOR_1_2 MAKE_PIXEL(0x8, 0xa, 0xc)
+
+#define MY_COLOR_2_1 MAKE_PIXEL(0xa, 0xc, 0xc)
+#define MY_COLOR_2_2 MAKE_PIXEL(0x8, 0xa, 0xa)
+
+#define MY_COLOR_3_1 MAKE_PIXEL(0xc, 0xa, 0xa)
+#define MY_COLOR_3_2 MAKE_PIXEL(0xa, 0x8, 0x8)
+
+#define MY_COLOR_4_1 MAKE_PIXEL(0xe, 0xa, 0x8)
+#define MY_COLOR_4_2 MAKE_PIXEL(0xc, 0x6, 0x6)
+
+#define MY_COLOR_5_1 MAKE_PIXEL(0xe, 0xa, 0x6)
+#define MY_COLOR_5_2 MAKE_PIXEL(0xe, 0x6, 0x4)
+
+#define MY_COLOR_6_1 MAKE_PIXEL(0xe, 0xa, 0x4)
+#define MY_COLOR_6_2 MAKE_PIXEL(0xe, 0x6, 0x2)
+
+#define MY_COLOR_7_1 MAKE_PIXEL(0xe, 0xa, 0x4)
+#define MY_COLOR_7_2 MAKE_PIXEL(0xe, 0x6, 0x0)
+
+#define MY_COLOR_8_1 MAKE_PIXEL(0xc, 0xc, 0x6)
+#define MY_COLOR_8_2 MAKE_PIXEL(0xc, 0x8, 0x2)
+
+#define MY_COLOR_9_1 MAKE_PIXEL(0xa, 0xc, 0x8)
+#define MY_COLOR_9_2 MAKE_PIXEL(0xa, 0x8, 0x4)
+
+#define MY_COLOR_10_1 MAKE_PIXEL(0x8, 0xc, 0xa)
+#define MY_COLOR_10_2 MAKE_PIXEL(0x8, 0x8, 0x6)
+
+#define MY_COLOR_11_1 MAKE_PIXEL(0x8, 0xc, 0xc)
+#define MY_COLOR_11_2 MAKE_PIXEL(0x6, 0x8, 0x8)
+
+#define MY_COLOR_12_1 MAKE_PIXEL(0x8, 0xc, 0xc)
+#define MY_COLOR_12_2 MAKE_PIXEL(0x4, 0x8, 0x8)
+
+#define MY_COLOR_13_1 MAKE_PIXEL(0xa, 0xc, 0xe)
+#define MY_COLOR_13_2 MAKE_PIXEL(0x6, 0xa, 0xa)
+
 /* LCD image persistence (ghosting) filter */
 /* Simulates (roughly) the slow decay response time of passive-matrix LCD */
 /* Rate value is formatted as 0.8 fixed-point integer (between 0.0 and 0.99609375), a higher value meaning a slower decay */
 /* Required for proper display of some effects in a few Game Gear games (James Pond 3, Power Drift, Super Monaco GP II,...) */
-#define RENDER_PIXEL_LCD(in,out,table,rate) \
+#define RENDER_PIXEL_LCD(in,out,table,bgbuf) \
 { \
+  PIXEL_OUT_T pixel_left = table[*(bgbuf-1)]; \
+  PIXEL_OUT_T pixel_right = table[*(bgbuf+1)]; \
+  PIXEL_OUT_T pixel_current = table[*bgbuf++]; \
   PIXEL_OUT_T pixel_out = table[*in++]; \
   PIXEL_OUT_T pixel_old  = *out; \
   uint8 r = GET_R(pixel_out); \
   uint8 g = GET_G(pixel_out); \
   uint8 b = GET_B(pixel_out); \
-  int r_decay = GET_R(pixel_old) - r; \
-  int g_decay = GET_G(pixel_old) - g; \
-  int b_decay = GET_B(pixel_old) - b; \
-  if (r_decay > 0) r += (rate * r_decay) >> 8; \
-  if (g_decay > 0) g += (rate * g_decay) >> 8; \
-  if (b_decay > 0) b += (rate * b_decay) >> 8; \
+  uint16 rl = GET_R(pixel_left); \
+  uint16 gl = GET_G(pixel_left); \
+  uint16 bl = GET_B(pixel_left); \
+  uint i, j, cur_idx; \
+  bool should_break = false; \
+  if ((pixel_left == pixel_right) && (pixel_current == pixel_out) && (pixel_left != pixel_out)) { \
+    for (i = 0; i < 2 && !should_break; i++) { \
+      cur_idx = (i + my_pixel_index) % 13; \
+      for (j = 0; j < 2 && !should_break; j++) { \
+        if (my_pixel_lut[cur_idx][j][0] == pixel_current && \
+            my_pixel_lut[cur_idx][j][1] == pixel_left) { \
+          r = (uint8)((r + rl) >> 1); \
+          g = (uint8)((g + gl) >> 1); \
+          b = (uint8)((b + bl) >> 1); \
+          my_pixel_index = cur_idx; \
+          should_break = true; \
+        } \
+      } \
+    } \
+  } \
   *out++ = PIXEL(r,g,b); \
 }
 
