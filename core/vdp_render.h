@@ -138,8 +138,8 @@
   uint i, j, cur_idx; \
   bool should_break = false; \
   if ((pixel_left == pixel_right) && (pixel_current == pixel_out) && (pixel_left != pixel_out)) { \
-    for (i = 0; i < 2 && !should_break; i++) { \
-      cur_idx = (i + my_pixel_index) % 13; \
+    for (i = 0; i < 3 && !should_break; i++) { \
+      cur_idx = (i == 2) ? 0 : ((i + my_pixel_index) % 13); \
       for (j = 0; j < 2 && !should_break; j++) { \
         if (my_pixel_lut[cur_idx][j][0] == pixel_current && \
             my_pixel_lut[cur_idx][j][1] == pixel_left) { \
