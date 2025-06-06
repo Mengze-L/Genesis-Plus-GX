@@ -581,6 +581,11 @@ static PIXEL_OUT_T pixel_lut_m4[0x40];
 /* Background & Sprite line buffers */
 static uint8 linebuf[2][0x200];
 
+/* Mengze Background line buffers */
+static uint8 mengzebuf[0x200];
+static PIXEL_OUT_T my_pixel_lut[13][2][2];
+static uint8 my_pixel_index;
+
 /* Sprite limit flag */
 static uint8 spr_ovr;
 
@@ -961,6 +966,80 @@ INLINE void merge(uint8 *srca, uint8 *srcb, uint8 *dst, uint8 *table, int width)
   while (--width);
 }
 
+/*--------------------------------------------------------------------------*/
+/* Pixel dithering color seletion table*/
+/*--------------------------------------------------------------------------*/
+
+static void my_pixel_init(void)
+{
+  my_pixel_index = 0;
+
+  my_pixel_lut[0][0][0] = MY_COLOR_1_1;
+  my_pixel_lut[0][0][1] = MY_COLOR_1_2;
+  my_pixel_lut[0][1][0] = MY_COLOR_1_2;
+  my_pixel_lut[0][1][1] = MY_COLOR_1_1;
+
+  my_pixel_lut[1][0][0] = MY_COLOR_2_1;
+  my_pixel_lut[1][0][1] = MY_COLOR_2_2;
+  my_pixel_lut[1][1][0] = MY_COLOR_2_2;
+  my_pixel_lut[1][1][1] = MY_COLOR_2_1;
+
+  my_pixel_lut[2][0][0] = MY_COLOR_3_1;
+  my_pixel_lut[2][0][1] = MY_COLOR_3_2;
+  my_pixel_lut[2][1][0] = MY_COLOR_3_2;
+  my_pixel_lut[2][1][1] = MY_COLOR_3_1;
+
+  my_pixel_lut[3][0][0] = MY_COLOR_4_1;
+  my_pixel_lut[3][0][1] = MY_COLOR_4_2;
+  my_pixel_lut[3][1][0] = MY_COLOR_4_2;
+  my_pixel_lut[3][1][1] = MY_COLOR_4_1;
+
+  my_pixel_lut[4][0][0] = MY_COLOR_5_1;
+  my_pixel_lut[4][0][1] = MY_COLOR_5_2;
+  my_pixel_lut[4][1][0] = MY_COLOR_5_2;
+  my_pixel_lut[4][1][1] = MY_COLOR_5_1;
+
+  my_pixel_lut[5][0][0] = MY_COLOR_6_1;
+  my_pixel_lut[5][0][1] = MY_COLOR_6_2;
+  my_pixel_lut[5][1][0] = MY_COLOR_6_2;
+  my_pixel_lut[5][1][1] = MY_COLOR_6_1;
+
+  my_pixel_lut[6][0][0] = MY_COLOR_7_1;
+  my_pixel_lut[6][0][1] = MY_COLOR_7_2;
+  my_pixel_lut[6][1][0] = MY_COLOR_7_2;
+  my_pixel_lut[6][1][1] = MY_COLOR_7_1;
+
+  my_pixel_lut[7][0][0] = MY_COLOR_8_1;
+  my_pixel_lut[7][0][1] = MY_COLOR_8_2;
+  my_pixel_lut[7][1][0] = MY_COLOR_8_2;
+  my_pixel_lut[7][1][1] = MY_COLOR_8_1;
+
+  my_pixel_lut[8][0][0] = MY_COLOR_9_1;
+  my_pixel_lut[8][0][1] = MY_COLOR_9_2;
+  my_pixel_lut[8][1][0] = MY_COLOR_9_2;
+  my_pixel_lut[8][1][1] = MY_COLOR_9_1;
+
+  my_pixel_lut[9][0][0] = MY_COLOR_10_1;
+  my_pixel_lut[9][0][1] = MY_COLOR_10_2;
+  my_pixel_lut[9][1][0] = MY_COLOR_10_2;
+  my_pixel_lut[9][1][1] = MY_COLOR_10_1;
+
+  my_pixel_lut[10][0][0] = MY_COLOR_11_1;
+  my_pixel_lut[10][0][1] = MY_COLOR_11_2;
+  my_pixel_lut[10][1][0] = MY_COLOR_11_2;
+  my_pixel_lut[10][1][1] = MY_COLOR_11_1;
+
+  my_pixel_lut[11][0][0] = MY_COLOR_12_1;
+  my_pixel_lut[11][0][1] = MY_COLOR_12_2;
+  my_pixel_lut[11][1][0] = MY_COLOR_12_2;
+  my_pixel_lut[11][1][1] = MY_COLOR_12_1;
+
+  my_pixel_lut[12][0][0] = MY_COLOR_13_1;
+  my_pixel_lut[12][0][1] = MY_COLOR_13_2;
+  my_pixel_lut[12][1][0] = MY_COLOR_13_2;
+  my_pixel_lut[12][1][1] = MY_COLOR_13_1;
+}
+
 
 /*--------------------------------------------------------------------------*/
 /* Pixel color lookup tables initialization                                 */
@@ -999,6 +1078,9 @@ static void palette_init(void)
     pixel_lut[1][i] = MAKE_PIXEL(r<<1,g<<1,b<<1);
     pixel_lut[2][i] = MAKE_PIXEL(r+7,g+7,b+7);
   }
+
+  /* Initizlize my pixel for dithering Yuu Yuu */
+  my_pixel_init();
 
   /* Initialize Mode 4 pixel color look-up table */
   for (i = 0; i < 0x40; i++)
@@ -4718,6 +4800,7 @@ void render_reset(void)
 
   /* Clear line buffers */
   memset(linebuf, 0, sizeof(linebuf));
+  memset(mengzebuf, 0, sizeof(mengzebuf));
 
   /* Clear color palettes */
   memset(pixel, 0, sizeof(pixel));
@@ -4748,6 +4831,9 @@ void render_line(int line)
 
     /* Render BG layer(s) */
     render_bg(line);
+
+    /* Save BG layer by Mengze*/
+    memcpy(mengzebuf, linebuf[0], sizeof(mengzebuf));
 
     /* Render sprite layer */
     render_obj(line & 1);
@@ -4809,6 +4895,9 @@ void remap_line(int line)
   /* Pixel line buffer */
   uint8 *src = &linebuf[0][0x20 - bitmap.viewport.x];
 
+  /* Pixel line buffer */
+  uint8 *bg = &mengzebuf[0x20 - bitmap.viewport.x];
+
   /* Adjust line offset in framebuffer */
   line = (line + bitmap.viewport.y) % lines_per_frame;
 
@@ -4846,7 +4935,7 @@ void remap_line(int line)
     {
       do
       {
-        RENDER_PIXEL_LCD(src,dst,pixel,config.lcd);
+        RENDER_PIXEL_LCD(src,dst,pixel,bg);
       }
       while (--width);
     }
@@ -4859,5 +4948,6 @@ void remap_line(int line)
       while (--width);
     }
  #endif
+    memset(mengzebuf, 0, sizeof(mengzebuf));
   }
 }
